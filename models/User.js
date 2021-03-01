@@ -3,7 +3,11 @@ const sequelize = require('../config/connection');
 const bcrpyt = require('bcrypt');
 
 // create our User model
-class User extends Model {}
+class User extends Model {
+    checkPassword(loginPw) {
+        return bcrpyt.compareSync(loginPww, this.password);
+    }
+}
 
 // create fields/columns for User model
 User.init(

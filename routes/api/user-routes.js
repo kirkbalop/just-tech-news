@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { User } = require('../../models');
+const { User, Post, Vote } = require('../../models');
 
 // get all users
 router.get('/', (req, res) => {
@@ -18,7 +18,19 @@ router.get('/:id', (req, res) => {
     attributes: { exclude: ['password'] },
     where: {
       id: req.params.id
-    }
+    },
+    include: [
+        {
+            model: Post,
+            attributes: ['id', 'title', 'post_url', 'created_at']
+        },
+        {
+            model: Post,
+            attributes: ['title'],
+            through: Vote,
+          as: 'voted_posts'
+      }
+    ]
   })
     .then(dbUserData => {
       if (!dbUserData) {
@@ -48,28 +60,26 @@ router.post('/', (req, res) => {
 });
 
 router.post('/login', (req, res) => {
-    //  expects "<same as others>"
-    User.findOne({
-        where:{
-            email: req.body.email
-        }
-    }).then(dbUserData => {
-        if (!dbUserData) {
-            res.status(400).json({message: 'No user with that email address.'});
-            return;
-        }
+  // expects {email: 'lernantino@gmail.com', password: 'password1234'}
+  User.findOne({
+    where: {
+      email: req.body.email
+    }
+  }).then(dbUserData => {
+    if (!dbUserData) {
+      res.status(400).json({ message: 'No user with that email address!' });
+      return;
+    }
 
-        // res.json({ user: dbUserData });
+    const validPassword = dbUserData.checkPassword(req.body.password);
 
-        // verify user
-        const validPassword = dbUserData.checkPassword(req.body.password);
-        if (!validPassword) {
-            res.status(400).json({ message: 'Incorrect Password'});
-            return;
-        }
+    if (!validPassword) {
+      res.status(400).json({ message: 'Incorrect password!' });
+      return;
+    }
 
-        res.json({ user: dbUserData, message: 'You are now logged in!'});
-    });
+    res.json({ user: dbUserData, message: 'You are now logged in!' });
+  });
 });
 
 router.put('/:id', (req, res) => {
@@ -77,7 +87,7 @@ router.put('/:id', (req, res) => {
 
   // pass in req.body instead to only update what's passed through
   User.update(req.body, {
-      individualHooks: true,
+    individualHooks: true,
     where: {
       id: req.params.id
     }
